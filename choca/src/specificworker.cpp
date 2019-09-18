@@ -64,7 +64,6 @@ void SpecificWorker::initialize(int period)
 
 void SpecificWorker::compute( )
 {
-    int a;
     const float threshold = 200; // millimeters
     float rot = 0.6;  // rads per second
     try
