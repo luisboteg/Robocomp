@@ -17,6 +17,7 @@
  *    along with RoboComp.  If not, see <http://www.gnu.org/licenses/>.
  */
 #include "specificworker.h"
+const float pi=3.14159265358979323846;
 
 /**
 * \brief Default constructor
@@ -65,7 +66,7 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute( )
 {
     const float threshold = 200; // millimeters
-    float rot = 0.6;  // rads per second
+    float rot = pi/2;  // rads per second
     try
     {
         // read laser data
@@ -75,13 +76,14 @@ void SpecificWorker::compute( )
 
         if( ldata.front().dist < threshold)
         {
-                std::cout << ldata.front().dist << std::endl;
                 differentialrobot_proxy->setSpeedBase(5, rot);
-                usleep(rand()%(1500000-100000 + 1) + 100000);  // random wait between 1.5s and 0.1sec
+                std::cout << ldata.front().dist << std::endl;
+                giroNormal(rot);
+
         }
         else
         {
-                differentialrobot_proxy->setSpeedBase(600, 0);
+                differentialrobot_proxy->setSpeedBase(700, 0);
         }
     }
     catch(const Ice::Exception &ex)
@@ -89,8 +91,16 @@ void SpecificWorker::compute( )
         std::cout << ex << std::endl;
     }
 }
+void SpecificWorker::giroRandom(float rot)
+{
+    usleep(rand()%(1500000-100000 + 1) + 100000);  // random wait between 1.5s and 0.1sec
+}
+void SpecificWorker::giroNormal(float rot)
+{
+    //differentialrobot_proxy->setSpeedBase(5, rot);
+    usleep(1000000);  // wait 1s
 
-
+}
 
 
 

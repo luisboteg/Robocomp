@@ -27,8 +27,16 @@
 #ifndef SPECIFICWORKER_H
 #define SPECIFICWORKER_H
 
+#include <list>
 #include <genericworker.h>
 #include <innermodel/innermodel.h>
+using namespace std;
+
+struct mycoordenada{
+ int x;
+int y;
+};
+
 
 class SpecificWorker : public GenericWorker
 {
@@ -42,8 +50,12 @@ public:
 public slots:
 	void compute();
 	void initialize(int period);
+	void giroRandom(float rot);
+	void giroNormal(float rot);
 private:
 	std::shared_ptr<InnerModel> innerModel;
+	std::list<mycoordenada> lista; //= new list<coordenada>();
+
 
 };
 
