@@ -30,11 +30,14 @@
 #include <list>
 #include <genericworker.h>
 #include <innermodel/innermodel.h>
+#include "floormeter.h"
 using namespace std;
 
 struct mycoordenada{
- int x;
-int y;
+	int x;
+	int y;
+	float angulo;//angulo en radianes a donde mira el robor
+	int direccion;//0-7 posiciones del robot segun el cuadrante  de la circurferencia
 };
 
 
@@ -43,6 +46,8 @@ class SpecificWorker : public GenericWorker
 Q_OBJECT
 public:
 	SpecificWorker(TuplePrx tprx);
+	//SpecificWorker(MapPrx& mprx);
+
 	~SpecificWorker();
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
 
@@ -52,9 +57,15 @@ public slots:
 	void initialize(int period);
 	void giroRandom(float rot);
 	void giroNormal(float rot);
+//	void resetSlot();
+	void anadirLista(float rot);
+
 private:
+	
 	std::shared_ptr<InnerModel> innerModel;
-	std::list<mycoordenada> lista; //= new list<coordenada>();
+//    FloorMeter fm;
+
+	std::list<mycoordenada> lista;
 
 
 };

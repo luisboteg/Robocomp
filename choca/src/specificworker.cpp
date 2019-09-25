@@ -34,6 +34,10 @@ SpecificWorker::~SpecificWorker()
 {
 	std::cout << "Destroying SpecificWorker" << std::endl;
 }
+// SpecificWorker::SpecificWorker(MapPrx& mprx) : GenericWorker(mprx)
+// {
+//     connect(pushButton, SIGNAL(clicked()), this, SLOT(resetSlot()));
+// }
 
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 {
@@ -59,18 +63,28 @@ void SpecificWorker::initialize(int period)
 {
 	std::cout << "Initialize worker" << std::endl;
 	this->Period = period;
-	timer.start(Period);
-
+	//timer.start(Period);
+    mycoordenada start;
+    start.x=0;
+    start.y=0;
+    start.angulo=0.0;
+    start.direccion=0;
+    lista.push_back(start);
 }
 
 void SpecificWorker::compute( )
 {
+
+//    RoboCompGenericBase::TBaseState bState;
     const float threshold = 200; // millimeters
-    float rot = pi/2;  // rads per second
+    float rot = -pi/2;  // rads per second
     try
     {
         // read laser data
         RoboCompLaser::TLaserData ldata = laser_proxy->getLaserData();
+        // differentialrobot_proxy->getBaseState(bState);
+        // auto current = fm.addStep(bState.x, bState.z, bState.alpha);
+        // lcdNumber->display(current);
         //sort laser data from small to large distances using a lambda function.
         std::sort( ldata.begin(), ldata.end(), [](RoboCompLaser::TData a, RoboCompLaser::TData b){ return     a.dist < b.dist; });
 
@@ -84,6 +98,7 @@ void SpecificWorker::compute( )
         else
         {
                 differentialrobot_proxy->setSpeedBase(700, 0);
+                anadirLista(rot);
         }
     }
     catch(const Ice::Exception &ex)
@@ -101,6 +116,55 @@ void SpecificWorker::giroNormal(float rot)
     usleep(1000000);  // wait 1s
 
 }
+void SpecificWorker::anadirLista(float rot)
+{
+    mycoordenada nueva;
+    mycoordenada anterior = lista.back();
+    nueva.x = anterior.x;
+    nueva.y = anterior.y;
+    nueva.angulo = anterior.angulo + rot;
+    nueva.direccion = anterior.direccion + 1;
 
+    switch(nueva.direccion)
+    {
+        case 0:
+            nueva.x++;
+        break;
 
-
+        case 1:
+            nueva.x++;
+            nueva.y++;
+        break;
+        case 2:
+            nueva.y++;
+        break;
+        case 3:
+            nueva.x--;
+            nueva.y++;
+        break;
+        case 4:
+            nueva.x--;
+        break;
+        case 5:
+            nueva.x--;
+            nueva.y--;
+        break;
+        case 6:
+            nueva.y--;
+        break;
+        case 7:
+            nueva.x++;
+            nueva.y--;
+        break;        
+        case 8:
+            nueva.direccion = 0;
+            nueva.x++;
+        break;
+        default:
+        break;
+    }
+}
+// void SpecificWorker::resetSlot()
+// {
+//     fm.reset();
+// }
