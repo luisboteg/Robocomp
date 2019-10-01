@@ -36,7 +36,7 @@ using namespace std;
 struct mycoordenada{
 	int x;
 	int y;
-	float angulo;//angulo en radianes a donde mira el robor
+//	float angulo;//angulo en radianes a donde mira el robor
 	int direccion;//0-7 posiciones del robot segun el cuadrante  de la circurferencia
 };
 
@@ -47,7 +47,7 @@ Q_OBJECT
 public:
 	SpecificWorker(TuplePrx tprx);
 	//SpecificWorker(MapPrx& mprx);
-
+	int apunta=2;//0-7 posiciones del robot segun el cuadrante  de la circurferencia
 	~SpecificWorker();
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
 
@@ -59,9 +59,9 @@ public slots:
 	void giroNormal(float rot);
 //	void resetSlot();
 	void anadirLista(float rot);
+	bool estaEnLista();
 
 private:
-	
 	std::shared_ptr<InnerModel> innerModel;
 //    FloorMeter fm;
 
