@@ -1,11 +1,17 @@
-CommonBehavior.Endpoints=tcp -p 10000
+CommonBehavior.Endpoints=tcp -p 11005
 
 
 # Proxies for required interfaces
 LaserProxy = laser:tcp -h localhost -p 10003
 DifferentialRobotProxy = differentialrobot:tcp -h localhost -p 10004
 
+#InnerModelPath=/home/robocomp/robocomp/files/innermodel/simpleworld.xml
 
+xmin= -2500
+xmax= 2500
+ymin= -2500
+ymax= 2500
+tilesize = 70
 
 Ice.Trace.Protocol=0
 Ice.ACM.Client=10

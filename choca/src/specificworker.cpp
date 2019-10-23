@@ -24,6 +24,8 @@ const float pi=3.14159265358979323846;
 */
 SpecificWorker::SpecificWorker(TuplePrx tprx) : GenericWorker(tprx)
 {
+    cout<<"hola"<<endl;
+	rInfo("Specific        ");
 
 }
 
@@ -38,22 +40,58 @@ SpecificWorker::~SpecificWorker()
 
 bool SpecificWorker::setParams(RoboCompCommonBehavior::ParameterList params)
 {
-//       THE FOLLOWING IS JUST AN EXAMPLE
-//	To use innerModelPath parameter you should uncomment specificmonitor.cpp readConfig method content
-//	try
-//	{
-//		RoboCompCommonBehavior::Parameter par = params.at("InnerModelPath");
-//		std::string innermodel_path = par.value;
-//		innerModel = new InnerModel(innermodel_path);
-//	}
-//	catch(std::exception e) { qFatal("Error reading config params"); }
+    	qDebug()<<"hola";
 
+try
+	{
+        //RoboCompCommonBehavior::Parameter par = params.at("InnerModelPath");
+        //innerModel = std::make_shared<InnerModel>(par.value);
+		int xmin = std::stoi(params.at("xmin").value);
+		int xmax = std::stoi(params.at("xmax").value);
+		int ymin = std::stoi(params.at("ymin").value);
+		int ymax = std::stoi(params.at("ymax").value);
+		tilesize = std::stoi(params.at("tilesize").value);
 
-
+		qDebug() << __FILE__ ;
 	
+		// Scene
+		//scene.setSceneRect(-12000, -6000, 38000, 16000);
+		scene.setSceneRect(xmin, ymin, fabs(xmin)+fabs(xmax), fabs(ymin)+fabs(ymax));
+		view.setScene(&scene);
+		view.scale(1, -1);
+		//view.setParent(scrollArea);
+		//view.setViewport(new QGLWidget(QGLFormat(QGL::SampleBuffers)));
+		view.fitInView(scene.sceneRect(), Qt::KeepAspectRatio );
 
+		//grid.initialize( TDim{ tilesize, -12000, 25000, -6000, 10000}, TCell{0, true, false, nullptr, 0.} );
+		grid.initialize( TDim{ tilesize, xmin, xmax, ymin, ymax}, TCell{0, true, false, nullptr, 0.} );
+		
+		for(auto &[key, value] : grid)
+		{
+			auto tile = scene.addRect(-tilesize/2,-tilesize/2, 100,100, QPen(Qt::NoPen));
+			tile->setPos(key.x,key.z);
+			value.rect = tile;
+		}
 
-	return true;
+		robot = scene.addRect(QRectF(-200, -200, 400, 400), QPen(), QBrush(Qt::blue));
+		noserobot = new QGraphicsEllipseItem(-50,100, 100,100, robot);
+		noserobot->setBrush(Qt::magenta);
+
+		target = QVec::vec3(0,0,0);
+		
+		//qDebug() << __FILE__ << __FUNCTION__ << "CPP " << __cplusplus;
+		
+		
+		view.show();
+
+		//defaultMachine.start();
+		//QStateMachine.start();
+		
+		return true;
+	}
+
+	catch(const std::exception &e) { qFatal("Error reading config params"); }
+
 }
 
 void SpecificWorker::initialize(int period)
@@ -61,29 +99,28 @@ void SpecificWorker::initialize(int period)
 	std::cout << "Initialize worker" << std::endl;
 	this->Period = period;
 	timer.start(Period);
-//     mycoordenada start;
-//     start.x=0;
-//     start.y=0;
-//  //   start.angulo=pi/2;
-//     start.direccion=2;
-    //lista.push_back(start);
+
 }
 
 void SpecificWorker::compute()
 {
 
-//    RoboCompGenericBase::TBaseState bState;
+    RoboCompGenericBase::TBaseState bState;
     const float threshold = 200; // millimeters
     float rot = -pi/4;  // rads per second
     try
     {
         // read laser data
         RoboCompLaser::TLaserData ldata = laser_proxy->getLaserData();
-        // differentialrobot_proxy->getBaseState(bState);
-        // auto current = fm.addStep(bState.x, bState.z, bState.alpha);
-        // lcdNumber->display(current);
+
+        differentialrobot_proxy->getBaseState(bState);
+        //innerModel->updateTransformValues("base", bState.x, 0, bState.z, 0, bState.alpha, 0);
+
         //sort laser data from small to large distances using a lambda function.
         std::sort( ldata.begin(), ldata.end(), [](RoboCompLaser::TData a, RoboCompLaser::TData b){ return     a.dist < b.dist; });
+
+		updateVisitedCells(bState.x, bState.z);
+		updateOccupiedCells(bState, ldata);
 
         if( ldata.front().dist < threshold )
         {
@@ -113,123 +150,64 @@ void SpecificWorker::giroNormal(float rot)
     cout<<"debug2"<<endl;
     //differentialrobot_proxy->setSpeedBase(5, rot);
     usleep(1000000);  // wait 1s
-    this->apunta++;
-    if(this->apunta == 8)
-    {
-        this->apunta = 0;
-    }
+    // this->apunta++;
+    // if(this->apunta == 8)
+    // {
+    //     this->apunta = 0;
+    // }
 }
-// void SpecificWorker::anadirLista(float rot)
+
+void SpecificWorker::checkTransform(const RoboCompGenericBase::TBaseState &bState)
+{
+	//auto r = innerModel->transform("base", target, "world");		// using InnerModel
+	
+	Rot2D rot(bState.alpha);																		// create a 2D clockwise rotation matrix
+	QVec t = QVec::vec2(bState.x, bState.z);									  // create a 2D vector for robot translation
+	QVec t2 = QVec::vec2(target.x(), target.z());								// create a 2D vector from the 3D target
+	QVec q = rot.transpose() * ( t2 - t);												// multiply R_t * (y - T)
+	//qDebug() << target << r << q;
+}
+
+void SpecificWorker::updateOccupiedCells(const RoboCompGenericBase::TBaseState &bState, const RoboCompLaser::TLaserData &ldata)
+{
+	//InnerModelLaser *n = innerModel->getNode<InnerModelLaser>(QString("laser"));
+	for(auto l: ldata)
+	{
+	//	auto r = n->laserTo(QString("world"), l.dist, l.angle);	// r is in world reference system
+		// we set the cell corresponding to r as occupied 
+	//	auto [valid, cell] = grid.getCell(r.x(), r.z()); 
+		// if(valid)
+		// {
+		// 	cell.free = false;
+		// 	cell.rect->setBrush(Qt::darkRed);
+		// }
+	}
+}
+
+void SpecificWorker::updateVisitedCells(int x, int z)
+{
+	static unsigned int cont = 0;
+	auto [valid, cell] = grid.getCell(x, z); 
+	if(valid)
+	{
+		auto &occupied = cell.visited;
+		if(occupied)
+		{
+			occupied = false;
+			cont++;
+		}
+		float percentOccupacy = 100. * cont / grid.size();
+        cout<<percentOccupacy<<endl;
+	}
+}
+// void SpecificWorker::draw()
 // {
-//     cout<<"Entro en añadir lista";
-//     mycoordenada nueva;
-//     mycoordenada anterior = lista.back();
-//     nueva.x = anterior.x;
-//     nueva.y = anterior.y;
-//  //   nueva.angulo = anterior.angulo;
-//     nueva.direccion = this->apunta;
-
-//     switch(nueva.direccion)
-//     {
-//         case 0:
-//             nueva.x++;
-//         //    nueva.angulo = 0;
-//         break;
-
-//         case 1:
-//             nueva.x++;
-//             nueva.y++;
-//         //    nueva.angulo = pi/4;
-//         break;
-//         case 2:
-//             nueva.y++;
-//         //    nueva.angulo = pi/2;
-//         break;
-//         case 3:
-//             nueva.x--;
-//             nueva.y++;
-//         //    nueva.angulo = 3*pi/4;
-
-//         break;
-//         case 4:
-//             nueva.x--;
-//         //    nueva.angulo = pi;
-//         break;
-//         case 5:
-//             nueva.x--;
-//             nueva.y--;
-//         //    nueva.angulo = 5*pi/4;
-//         break;
-//         case 6:
-//             nueva.y--;
-//         //    nueva.angulo = 3*pi/2;
-//         break;
-//         case 7:
-//             nueva.x++;
-//             nueva.y--;
-//         //    nueva.angulo = 7*pi/4;
-//         break;        
-//         case 8:
-//             nueva.direccion = 0;
-//             nueva.x++;
-//         //    nueva.angulo = 0;
-//         break;
-//         default:
-//         break;
-//     }
-//         lista.push_back(nueva);
-//         cout<<"mostrando"<<endl;
-//         cout<<nueva.x<<"  "<<nueva.y;
-
+// 	for(auto &[key, value] : grid)
+// 	{
+// // 		if(value.visited == false)
+// // 			value.rect->setBrush(Qt::lightGray);
+// 		if(value.free == false)
+// 			value.rect->setBrush(Qt::darkRed);
+// 	}
+// 	view.show();
 // }
-// bool SpecificWorker::estaEnLista()
-// {
-//     mycoordenada nueva = lista[lista.size()-1];
-//     nueva.direccion = this->apunta;
-
-//     switch(nueva.direccion)
-//     {
-//         case 0:     
-//             nueva.x++;
-//         break;
-
-//         case 1:
-//             nueva.x++;
-//             nueva.y++;
-//         break;
-//         case 2:
-//             nueva.y++;
-//         break;
-//         case 3:
-//             nueva.x--;
-//             nueva.y++;
-
-//         break;
-//         case 4:
-//             nueva.x--;
-//         break;
-//         case 5:
-//             nueva.x--;
-//             nueva.y--;
-//         break;
-//         case 6:
-//             nueva.y--;
-//         break;
-//         case 7:
-//             nueva.x++;
-//             nueva.y--;
-//         break;        
-//         case 8:
-//             nueva.direccion = 0;
-//             nueva.x++;
-//         break;
-//         default:
-//         break;
-//     }
-  //  if(lista.)
-//}
-// void SpecificWorker::resetSlot()
-// {
-//     fm.reset();
-// }
-// USAR GRID.H

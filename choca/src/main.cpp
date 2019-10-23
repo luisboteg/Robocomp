@@ -168,15 +168,18 @@ int ::choca::run(int argc, char* argv[])
 	}
 	rInfo("LaserProxy initialized Ok!");
 
-
 	tprx = std::make_tuple(differentialrobot_proxy,laser_proxy);
+	rInfo("1          ");
 	SpecificWorker *worker = new SpecificWorker(tprx);
+	rInfo("2         ");
 	//Monitor thread
 	SpecificMonitor *monitor = new SpecificMonitor(worker,communicator());
+	rInfo("3         ");
 	QObject::connect(monitor, SIGNAL(kill()), &a, SLOT(quit()));
+	rInfo("4         ");
 	QObject::connect(worker, SIGNAL(kill()), &a, SLOT(quit()));
+	rInfo("5         ");
 	monitor->start();
-
 	if ( !monitor->isRunning() )
 		return status;
 
