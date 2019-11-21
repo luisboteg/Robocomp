@@ -5,7 +5,7 @@
 #define USE_QTGUI
 
 
-#define PROGRAM_NAME    "ChocaMem"
-#define SERVER_FULL_NAME   "RoboComp ChocaMem:: ChocaMem"
+#define PROGRAM_NAME    "goTo"
+#define SERVER_FULL_NAME   "RoboComp goTo:: goTo"
 
 #endif

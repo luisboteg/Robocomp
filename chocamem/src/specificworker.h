@@ -95,7 +95,8 @@ private:
 	void haciaDelante();
 	void giroRandom();
 	void barrido();
-
+	void esperarPick();
+	void haciaObjeto();
 
 };
 

@@ -90,33 +90,36 @@ void SpecificWorker::compute()
 // girar 360 grados para conocer obstaculos
 
 	//ldata = laser_proxy->getLaserData();
-
-
+	bool girar=false;
 	const float threshold = 200; // millimeters
-	readRobotState(threshold); //si true gira
+	readRobotState(threshold,girar); //si true gira
 	/// AQUI LA MAQUINA DE ESTADOS
 	switch(estado)
 	{
 		case 0:
-		giroIzquierda(threshold);
-
+			esperarPick();
 		break;
 
 		case 1:
-		giroAntiguo();
-
+			giroAntiguo();
 		break;
+
 		case 2:
-		giroDerecha(threshold);
-
+			giroDerecha(threshold);
 		break;
+
 		case 3:
-		haciaDelante();
+			haciaDelante();
+		break;
 
-		break;
 		case 4:
-		barrido();
+			barrido();
 		break;
+
+		case 5:
+			haciaObjeto();
+		break;
+
 		default:
 		break;
 	}
@@ -124,7 +127,7 @@ void SpecificWorker::compute()
 }
 	
 
-void SpecificWorker::readRobotState(float threshold)
+void SpecificWorker::readRobotState(float threshold, bool girar)
 {
 	try
 	{
@@ -150,21 +153,18 @@ void SpecificWorker::readRobotState(float threshold)
 	{
 		std::cout << "Error reading from Laser" << e << std::endl;
 	}
+
 	//Resize world widget if necessary, and render the world
 	if (view.size() != scrollArea->size())
 	 		view.setFixedSize(scrollArea->width(), scrollArea->height());
 
-	bool dist=false;
-
-
-
 	if(ldata.front().dist < threshold)
 	{
-		dist = true;
+		girar = true;
 	}
 	
 	//seleccionar estado
-	if(dist)
+	if(girar)
 	{
 		this->estado = 0;
 		this->contadorBucle++;
@@ -221,6 +221,8 @@ void SpecificWorker::updateOccupiedCells(const RoboCompGenericBase::TBaseState &
 void SpecificWorker::RCISMousePicker_setPick(const Pick &myPick)
 {
 //subscribesToCODE
+
+
 }
 void SpecificWorker::giroIzquierda(float threshold)
 {
@@ -230,10 +232,8 @@ void SpecificWorker::giroIzquierda(float threshold)
 }
 void SpecificWorker::haciaDelante()
 {
-
 	//avanzar	
     differentialrobot_proxy->setSpeedBase(700, 0);
-
 	//qDebug()<<bState.x<<bState.z;
 	
 }
@@ -297,6 +297,11 @@ void SpecificWorker::giroAntiguo()
 void SpecificWorker::barrido()
 {
 
+
+
 }
 
+void SpecificWorker:: haciaObjeto()
+{
 
+}
