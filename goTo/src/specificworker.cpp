@@ -63,7 +63,6 @@ void SpecificWorker::initialize(int period)
 void SpecificWorker::compute()
 { 
 	readRobotState(); 
-	/// AQUI LA MAQUINA DE ESTADOS
 	switch(estado)
 	{
 		case 0:
@@ -82,7 +81,7 @@ void SpecificWorker::compute()
 		break;
 
 		case 4:
-		volverCamino();
+		Fin();
 		break;
 
 		default:
@@ -109,15 +108,16 @@ void SpecificWorker::girarHaciaDestino()
 	//transofrma coordenadas al eje de referencia del robot
 	QVec vec = innerModel->transform("base",QVec::vec3(destino.x,0,destino.z),"world");
 	float angle = atan2(vec.x(),vec.z());
-
+	this->esquivarObs = 3;
 	if(fabs(angle) < 0.05)
 	{
+		qDebug()<<"salgo de girar hacia destino";
 		estado = 1;
 		differentialrobot_proxy->setSpeedBase(0,0);
-
 		return;
 	}
 	try{
+		qDebug()<<"Giro hacia destino"<<angle;
 		differentialrobot_proxy->setSpeedBase(0,angle);
 	}
 		catch(const Ice::Exception &e)
@@ -137,22 +137,21 @@ void SpecificWorker::crearrObjetivo()
 	rObjetivo.c = v1 * bState.z - v2 * bState.x;
 	qDebug()<<"          ";
 	qDebug()<<"Creo objetivo";
-		this->esquivarObs = 3;
+	this->esquivarObs = 3;
 }
  bool SpecificWorker::pertenecePunto(float X, float Z)
  {
-	 if ((rObjetivo.a*X + rObjetivo.b *Z + rObjetivo.c)){
+
+	 if (fabs((rObjetivo.a*X + rObjetivo.b *Z + rObjetivo.c)) < 100 ){
 		 return true;
+		 qDebug()<<" estamos en la recta";
 	 }
 	 return false;
  }
 
-void SpecificWorker::irDestino() //añadir comprobacion de error por el angulo alpha
+void SpecificWorker::irDestino()
 {
 	std::sort( ldata.begin(), ldata.end(), [](RoboCompLaser::TData a, RoboCompLaser::TData b){ return     a.dist < b.dist; });
-	qDebug()<<"            ";
-	qDebug()<<"Voy destino"<<ldata.front().dist;
-	qDebug()<<"            ";
 	if(ldata.front().dist < threshold)
 	{
 		this->estado=2;
@@ -162,16 +161,23 @@ void SpecificWorker::irDestino() //añadir comprobacion de error por el angulo a
 	{
 		differentialrobot_proxy->setSpeedBase(700, 0);
 	}
-
 	if(fabs(bState.x - destino.x) < 100 && fabs(bState.z - destino.z) < 100 )
 	{
-		differentialrobot_proxy->setSpeedBase(0,0);
-		this->estado=5;
+			qDebug()<<"Fin";
+			this->estado=4;
 	}
-
+	else
+	{
+		//añadir comprobacion de error por el angulo alpha
+		QVec vec = innerModel->transform("base",QVec::vec3(destino.x,0,destino.z),"world");
+		float angle = atan2(vec.x(),vec.z());
+		if(!rObjetivo.pertenece(bState.x,bState.z,25) && fabs(angle) < 0.05)
+		{
+		crearrObjetivo();
+		this->estado=0;
+		}
+	}
 }
-/////////////////////////////////////////////////////////////////////
-/////////////////////////////////////////////////////////////////////
 
 void SpecificWorker::RCISMousePicker_setPick(Pick myPick)
 {
@@ -188,7 +194,10 @@ void SpecificWorker::volverCamino()
 
 
 }
-
+void SpecificWorker::Fin()
+{
+	differentialrobot_proxy->setSpeedBase(0,0);
+}
 void SpecificWorker::esquivarObstaculo()
 {
 	switch (esquivarObs)
@@ -205,34 +214,11 @@ void SpecificWorker::esquivarObstaculo()
 		this->estado=0;
 		break;
 	}
-
-
-//sino girar segun lo leido
 }
 void SpecificWorker::girarObstaculo()
 {
-	// auto izquierda = ldata[19];
-	// auto derecha = ldata[81];//acumuladores de cada lado
-	// //mirar laser para girar
-	// for(int i= 20; i < ldata.size()-20 ; i++) //ldata.size() = 100
-	// {
-	// 	if(i < ldata.size()/2)
-	// 	{
-	// 		izquierda += ldata[i];
-	// 	}
-	// 	else
-	// 	{
-	// 		derecha += ldata[i];
-	// 	}
-		
-	// }
-	// EN PRINCIPIO VAMOS A GIRAR DERECHA
-
-	//si estamos paralelo al obstaculo cambiamos de estado
-	//en principio giramos 90 grados
 
 	differentialrobot_proxy->setSpeedBase(5,rot);
-	//usleep(1000000);
 	//calcular distancia de bState al punto destino
 	coordenada origen;
 	origen.x = bState.x;
@@ -251,66 +237,76 @@ void SpecificWorker::girarObstaculo()
 }
 void SpecificWorker::rodearObstaculo()
 {
-	//mirar laser
-	auto minD = std::min(ldata.begin(), ldata.end()-50, [](auto a, auto b){ return (*a).dist < (*b).dist; });
-	auto minA = std::min(ldata.begin()+30, ldata.end()-30, [](auto a, auto b){ return (*a).dist < (*b).dist; });
-	auto minI = std::min(ldata.begin()+50, ldata.end()-1, [](auto a, auto b){ return (*a).dist < (*b).dist; });
-	float floatI = (*minI).dist;
-	float floatA = (*minA).dist;
-	float floatD = (*minD).dist;
-	qDebug()<<"izquierda"<<floatI;
-	qDebug()<<"adelante"<<floatA;
-	qDebug()<<"derecha"<<floatD;
-	if(floatI > threshold*2) 
+	//verLinea()
+	coordenada origen;
+	origen.x = bState.x;
+	origen.z = bState.z;
+	float dActual = distancia(origen,destino);
+
+	if(rObjetivo.pertenece(bState.x,bState.z) && (dActual < distanciaEsquivar  - 200)) // || verDestino()
 	{
-		//girarIzquierda
-		qDebug()<<"giro Izquierda";
-		differentialrobot_proxy->setSpeedBase(5,-rot);
-		//usleep(1000000);
-		//differentialrobot_proxy->setSpeedBase(700,0);
-	}
-	else if(floatA > threshold*2)
-	{
-		//ir hacia delante 
-		qDebug()<<"Avanzo";
-		differentialrobot_proxy->setSpeedBase(700,0);
-	}
-	else if(floatD > threshold*2)
-	{
-		//girarDerecha
-		qDebug()<<"giro Derecha";
-		differentialrobot_proxy->setSpeedBase(5,rot);
-		//usleep(1000000);
-		//differentialrobot_proxy->setSpeedBase(700,0);
+		qDebug()<<"Cambiamos estado";
+		differentialrobot_proxy->setSpeedBase(0,0);
+		this->estado = 0;
 	}
 	else
 	{
-		//dar la vuelta
-		this->esquivarObs=1;
-		//usleep(2*1000000);
-		qDebug()<<"Vuelvo primer giro";
-		//differentialrobot_proxy->setSpeedBase(700,0);
+		//mirar laser
+		auto minD = std::min(ldata.begin(), ldata.end()-66, [](auto a, auto b){ return (*a).dist < (*b).dist; });
+		auto minA = std::min(ldata.begin()+33, ldata.end()-33, [](auto a, auto b){ return (*a).dist < (*b).dist; });
+		auto minI = std::min(ldata.begin()+66, ldata.end()-1, [](auto a, auto b){ return (*a).dist < (*b).dist; });
+		float floatI = (*minI).dist;
+		float floatA = (*minA).dist;
+		float floatD = (*minD).dist;
+		qDebug()<<"izquierda"<<floatI;
+		qDebug()<<"adelante"<<floatA;
+		qDebug()<<"derecha"<<floatD;
+		if(floatI > threshold*2) 
+		{
+			//girarIzquierda
+			qDebug()<<"giro Izquierda";
+			differentialrobot_proxy->setSpeedBase(5,-rot);
+			//usleep(1000000);
+			//differentialrobot_proxy->setSpeedBase(700,0);
+		}
+		else if(floatA > threshold*2)
+		{
+			//ir hacia delante 
+			qDebug()<<"Avanzo";
+			differentialrobot_proxy->setSpeedBase(700,0);
+		}
+		else if(floatD > threshold*2)
+		{
+			//girarDerecha
+			qDebug()<<"giro Derecha";
+			differentialrobot_proxy->setSpeedBase(5,rot);
+			//usleep(1000000);
+			//differentialrobot_proxy->setSpeedBase(700,0);
+		}
+		else
+		{
+			//dar la vuelta
+			this->esquivarObs=1;
+			//usleep(2*1000000);
+			qDebug()<<"Marcha atrás";
+			differentialrobot_proxy->setSpeedBase(-700,0);
 
+		}
 	}
-	
-	//MIRAR NOS CARGAMOS EL VECTOR DEL LASER (IDEA)
-	//HACER QDEBUG EN ESTADO IR DESTINO CUANDO GIRA
-
-
-
-	//verObjetivo()
-	//girarObjetivo
-	//verLinea()
-
 	
 	//generar poligono por si vemos destino
 	//si lo vemos ir hacia alla y cambiamos estado
 	//sino, si hemos llegado a la recta cambiamos estado
 		
-	//comprobar laser izquierda para ver si pasamos el  objeto (revisar distancia)
-	//si lo hemos pasado girar izquierda (por ahora seran 90 grados)
 }
 float SpecificWorker::distancia(coordenada origen, coordenada destino)
 {
 	return sqrt(pow((destino.x - origen.x),2) + pow((destino.z - origen.z),2));
+}
+bool SpecificWorker::verDestino()
+{
+	
+	
+	
+	return false;
 }

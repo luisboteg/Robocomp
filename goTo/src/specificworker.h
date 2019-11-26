@@ -74,8 +74,10 @@ public slots:
 	void girarObstaculo();
 	void rodearObstaculo();
 	void crearrObjetivo();
+	bool verDestino();
 	bool pertenecePunto(float X, float Z);
 	float distancia(coordenada origen, coordenada destino);
+	void Fin();
 
 
 private:
