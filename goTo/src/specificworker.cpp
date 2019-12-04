@@ -55,7 +55,7 @@ void SpecificWorker::initialize(int period)
 	std::cout << "Initialize worker" << std::endl;
 	this->Period = period;
 	timer.start(Period);
-	this->estado=4;
+	this->estado=9;
 	this->threshold=200;
 	this->rot = 0.6;
 	this->fin=false;
@@ -76,10 +76,6 @@ void SpecificWorker::compute()
 
 		case 2:
 		esquivarObstaculo();
-		break;
-
-		case 3:
-		volverCamino();
 		break;
 
 		case 4:
@@ -167,9 +163,8 @@ void SpecificWorker::irDestino()
 	{
 		differentialrobot_proxy->setSpeedBase(700, angle);
 	}
-	if(fabs(bState.x - destino.x) < 100 && fabs(bState.z - destino.z) < 200 )
+	if(fabs(bState.x - destino.x) < 100 && fabs(bState.z - destino.z) < 100 )
 	{
-			qDebug()<<"Fin";
 			this->estado=4;
 	}
 
@@ -185,13 +180,11 @@ void SpecificWorker::RCISMousePicker_setPick(Pick myPick)
 	crearrObjetivo();
 
 }
-void SpecificWorker::volverCamino()
-{
-	this->fin=true;
-}
 void SpecificWorker::Fin()
 {
 	differentialrobot_proxy->setSpeedBase(0,0);
+	qDebug()<<"Fin";
+	usleep(1000);
 }
 void SpecificWorker::esquivarObstaculo()
 {
@@ -206,7 +199,8 @@ void SpecificWorker::esquivarObstaculo()
 		break;
 
 	default:
-		this->estado=0;
+		if(this->estado!=4)
+			this->estado=0;
 		break;
 	}
 }
@@ -258,7 +252,7 @@ void SpecificWorker::rodearObstaculo()
 		// qDebug()<<"izquierda"<<floatI;
 		// qDebug()<<"adelante"<<floatA;
 		// qDebug()<<"derecha"<<floatD;
-		if(floatI > threshold*2) 
+		if(floatI > threshold*2.2) 
 		{
 			//girarIzquierda
 			qDebug()<<"giro Izquierda";
@@ -269,6 +263,7 @@ void SpecificWorker::rodearObstaculo()
 			//ir hacia delante 
 			qDebug()<<"Avanzo";
 			differentialrobot_proxy->setSpeedBase(700,0);
+				usleep(1000);
 		}
 		else if(floatD > threshold*1.5)
 		{
@@ -301,4 +296,29 @@ bool SpecificWorker::verDestino()
 	
 	
 	return false;
+}
+
+
+
+bool SpecificWorker::GotoPoint_atTarget()
+{
+	return this->fin;
+}
+
+void SpecificWorker::GotoPoint_go(string nodo, float x, float y, float alpha)
+{
+//implementCODE
+
+}
+
+void SpecificWorker::GotoPoint_stop()
+{
+//implementCODE
+
+}
+
+void SpecificWorker::GotoPoint_turn(float speed)
+{
+//implementCODE
+
 }

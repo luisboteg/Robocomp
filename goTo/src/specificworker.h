@@ -65,12 +65,20 @@ public:
 
 public slots:
 
+
+
+
+	bool GotoPoint_atTarget();
+	void GotoPoint_go(string nodo, float x, float y, float alpha);
+	void GotoPoint_stop();
+	void GotoPoint_turn(float speed);
+
+
 	void compute();
 	void initialize(int period);
 	void readRobotState();
 	void girarHaciaDestino();
 	void irDestino();
-	void volverCamino();
 	void esquivarObstaculo();
 	void girarObstaculo();
 	void rodearObstaculo();
