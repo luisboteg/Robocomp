@@ -38,6 +38,7 @@ Q_OBJECT
 public:
 	SpecificWorker(TuplePrx tprx);
 	~SpecificWorker();
+	bool fin;
 	bool setParams(RoboCompCommonBehavior::ParameterList params);
 	int estado;
 	int threshold;
